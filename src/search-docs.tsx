@@ -1,4 +1,12 @@
-import { ActionPanel, Action, List, LocalStorage, showToast, Toast, Icon } from "@raycast/api";
+import {
+  ActionPanel,
+  Action,
+  List,
+  LocalStorage,
+  showToast,
+  Toast,
+  Icon,
+} from "@raycast/api";
 import { useEffect, useState, useMemo } from "react";
 
 const LLMS_FULL_URL = "https://docs.cocartapi.com/llms-full.txt";
@@ -110,7 +118,9 @@ function categoryIcon(category: string): Icon {
 function parseLlmsTxt(text: string): Map<string, string> {
   const descriptions = new Map<string, string>();
   for (const line of text.split("\n")) {
-    const match = line.trim().match(/^-\s+\[([^\]]+)\]\(([^)]+)\)(?::\s*(.*))?$/);
+    const match = line
+      .trim()
+      .match(/^-\s+\[([^\]]+)\]\(([^)]+)\)(?::\s*(.*))?$/);
     if (match && match[3]) {
       descriptions.set(match[2], match[3]);
     }
@@ -119,7 +129,10 @@ function parseLlmsTxt(text: string): Map<string, string> {
 }
 
 function isContentSparse(content: string): boolean {
-  const lines = content.trim().split("\n").filter((l) => l.trim().length > 0);
+  const lines = content
+    .trim()
+    .split("\n")
+    .filter((l) => l.trim().length > 0);
   return lines.length <= 3 || /openapi.*\.yaml\s/i.test(content);
 }
 
@@ -131,14 +144,22 @@ function parseLlmsFullTxt(text: string): DocEntry[] {
 
   while (i < lines.length) {
     const titleMatch = lines[i].match(/^# (.+)$/);
-    if (titleMatch && i + 1 < lines.length && lines[i + 1].startsWith("Source: ")) {
+    if (
+      titleMatch &&
+      i + 1 < lines.length &&
+      lines[i + 1].startsWith("Source: ")
+    ) {
       const title = titleMatch[1];
       const url = lines[i + 1].replace("Source: ", "").trim();
       i += 2;
 
       const contentLines: string[] = [];
       while (i < lines.length) {
-        if (lines[i].match(/^# .+$/) && i + 1 < lines.length && lines[i + 1].startsWith("Source: ")) {
+        if (
+          lines[i].match(/^# .+$/) &&
+          i + 1 < lines.length &&
+          lines[i + 1].startsWith("Source: ")
+        ) {
           break;
         }
         contentLines.push(lines[i]);
@@ -181,7 +202,10 @@ function parseLlmsFullTxt(text: string): DocEntry[] {
 
 function stripMdx(content: string): string {
   // Convert components with title attributes into markdown headings
-  let result = content.replace(/<Accordion\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n### $1\n");
+  let result = content.replace(
+    /<Accordion\s+[^>]*title="([^"]*)"[^>]*>/gi,
+    "\n### $1\n",
+  );
   result = result.replace(/<Tab\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n**$1**\n");
   result = result.replace(/<Step\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n**$1**\n");
 
@@ -195,7 +219,9 @@ function stripMdx(content: string): string {
     /^[ \t]*(```\w+)(?:\s+[^\n]*)?\n([\s\S]*?)^[ \t]*```$/gm,
     (_, lang, body) => {
       const lines = body.split("\n");
-      const indents = lines.filter((l: string) => l.trim().length > 0).map((l: string) => l.match(/^([ \t]*)/)?.[1].length ?? 0);
+      const indents = lines
+        .filter((l: string) => l.trim().length > 0)
+        .map((l: string) => l.match(/^([ \t]*)/)?.[1].length ?? 0);
       const minIndent = indents.length > 0 ? Math.min(...indents) : 0;
       const dedented = lines.map((l: string) => l.slice(minIndent)).join("\n");
       return `${lang}\n${dedented}\`\`\``;
@@ -260,7 +286,8 @@ async function fetchAndParse(): Promise<DocEntry[]> {
     fetch(LLMS_FULL_URL),
     fetch(LLMS_TXT_URL),
   ]);
-  if (!fullResponse.ok) throw new Error(`Failed to fetch docs: ${fullResponse.status}`);
+  if (!fullResponse.ok)
+    throw new Error(`Failed to fetch docs: ${fullResponse.status}`);
 
   const parsed = parseLlmsFullTxt(await fullResponse.text());
   if (indexResponse.ok) {
@@ -272,7 +299,11 @@ async function fetchAndParse(): Promise<DocEntry[]> {
 // Dropdown filter value format: "version:category" or just "version"
 function buildDropdownOptions(entries: DocEntry[]) {
   // Stable (v2) categories
-  const v2Cats = [...new Set(entries.filter((e) => e.version === "v2").map((e) => e.category))];
+  const v2Cats = [
+    ...new Set(
+      entries.filter((e) => e.version === "v2").map((e) => e.category),
+    ),
+  ];
   const v2Order = ["Cart", "Products", "Sessions", "Store", "User"];
   v2Cats.sort((a, b) => {
     const ai = v2Order.indexOf(a);
@@ -284,7 +315,11 @@ function buildDropdownOptions(entries: DocEntry[]) {
   });
 
   // Legacy (v1) categories
-  const v1Cats = [...new Set(entries.filter((e) => e.version === "v1").map((e) => e.category))];
+  const v1Cats = [
+    ...new Set(
+      entries.filter((e) => e.version === "v1").map((e) => e.category),
+    ),
+  ];
   const v1Order = ["Cart", "Cart (Plus)", "Products", "User", "Error Codes"];
   v1Cats.sort((a, b) => {
     const ai = v1Order.indexOf(a);
@@ -296,8 +331,29 @@ function buildDropdownOptions(entries: DocEntry[]) {
   });
 
   // Shared docs categories
-  const sharedCats = [...new Set(entries.filter((e) => e.version === "shared").map((e) => e.category))];
-  const sharedOrder = ["API Reference", "JWT", "Getting Started", "JWT Setup", "Tutorials", "Documentation", "Developers", "JWT Developers", "CLI Reference", "Knowledge Base", "Troubleshooting", "Overview", "Plugins", "Breaking Changes", "Resources", "Updates"];
+  const sharedCats = [
+    ...new Set(
+      entries.filter((e) => e.version === "shared").map((e) => e.category),
+    ),
+  ];
+  const sharedOrder = [
+    "API Reference",
+    "JWT",
+    "Getting Started",
+    "JWT Setup",
+    "Tutorials",
+    "Documentation",
+    "Developers",
+    "JWT Developers",
+    "CLI Reference",
+    "Knowledge Base",
+    "Troubleshooting",
+    "Overview",
+    "Plugins",
+    "Breaking Changes",
+    "Resources",
+    "Updates",
+  ];
   sharedCats.sort((a, b) => {
     const ai = sharedOrder.indexOf(a);
     const bi = sharedOrder.indexOf(b);
@@ -318,7 +374,9 @@ function applyFilter(entries: DocEntry[], filter: string): DocEntry[] {
   // "v2:Cart" or "v1:Products" or "shared:Tutorials"
   const [version, ...catParts] = filter.split(":");
   const category = catParts.join(":");
-  return entries.filter((e) => e.version === version && e.category === category);
+  return entries.filter(
+    (e) => e.version === version && e.category === category,
+  );
 }
 
 export default function SearchDocs() {
@@ -354,7 +412,10 @@ export default function SearchDocs() {
     fetchDocs();
   }, []);
 
-  const dropdownOptions = useMemo(() => buildDropdownOptions(entries), [entries]);
+  const dropdownOptions = useMemo(
+    () => buildDropdownOptions(entries),
+    [entries],
+  );
 
   const filteredEntries = useMemo(() => {
     // When searching, search all entries regardless of filter
@@ -395,40 +456,64 @@ export default function SearchDocs() {
           <List.Dropdown.Item title="All Docs" value="all" icon={Icon.List} />
 
           <List.Dropdown.Section title="API Reference (v2)">
-            <List.Dropdown.Item title="All" value="stable" icon={Icon.CheckCircle} />
+            <List.Dropdown.Item
+              title="All"
+              value="stable"
+              icon={Icon.CheckCircle}
+            />
             {dropdownOptions.v2Cats.map((cat) => (
-              <List.Dropdown.Item key={`v2:${cat}`} title={cat} value={`v2:${cat}`} icon={categoryIcon(cat)} />
+              <List.Dropdown.Item
+                key={`v2:${cat}`}
+                title={cat}
+                value={`v2:${cat}`}
+                icon={categoryIcon(cat)}
+              />
             ))}
           </List.Dropdown.Section>
 
           <List.Dropdown.Section title="API Reference (v1)">
             <List.Dropdown.Item title="All" value="legacy" icon={Icon.Clock} />
             {dropdownOptions.v1Cats.map((cat) => (
-              <List.Dropdown.Item key={`v1:${cat}`} title={cat} value={`v1:${cat}`} icon={categoryIcon(cat)} />
+              <List.Dropdown.Item
+                key={`v1:${cat}`}
+                title={cat}
+                value={`v1:${cat}`}
+                icon={categoryIcon(cat)}
+              />
             ))}
           </List.Dropdown.Section>
 
           <List.Dropdown.Section title="Guides & Reference">
             {dropdownOptions.sharedCats.map((cat) => (
-              <List.Dropdown.Item key={`shared:${cat}`} title={cat} value={`shared:${cat}`} icon={categoryIcon(cat)} />
+              <List.Dropdown.Item
+                key={`shared:${cat}`}
+                title={cat}
+                value={`shared:${cat}`}
+                icon={categoryIcon(cat)}
+              />
             ))}
           </List.Dropdown.Section>
         </List.Dropdown>
       }
     >
       {groupedEntries.map(([category, items]) => (
-        <List.Section key={category} title={category} subtitle={`${items.length}`}>
+        <List.Section
+          key={category}
+          title={category}
+          subtitle={`${items.length}`}
+        >
           {items.map((entry) => (
             <List.Item
               key={entry.url}
               title={entry.title}
               icon={categoryIcon(entry.category)}
-              detail={
-                <List.Item.Detail markdown={stripMdx(entry.content)} />
-              }
+              detail={<List.Item.Detail markdown={stripMdx(entry.content)} />}
               actions={
                 <ActionPanel>
-                  <Action.OpenInBrowser url={entry.url.replace(/\.md$/, "")} title="Open in Browser" />
+                  <Action.OpenInBrowser
+                    url={entry.url.replace(/\.md$/, "")}
+                    title="Open in Browser"
+                  />
                   <Action.CopyToClipboard
                     title="Copy URL"
                     content={entry.url.replace(/\.md$/, "")}
@@ -450,12 +535,18 @@ export default function SearchDocs() {
                         const parsed = await fetchAndParse();
                         setEntries(parsed);
                         await cacheEntries(parsed);
-                        showToast({ style: Toast.Style.Success, title: "Cache refreshed" });
+                        showToast({
+                          style: Toast.Style.Success,
+                          title: "Cache refreshed",
+                        });
                       } catch (error) {
                         showToast({
                           style: Toast.Style.Failure,
                           title: "Failed to refresh",
-                          message: error instanceof Error ? error.message : "Unknown error",
+                          message:
+                            error instanceof Error
+                              ? error.message
+                              : "Unknown error",
                         });
                       } finally {
                         setIsLoading(false);

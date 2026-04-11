@@ -5,7 +5,10 @@
   "description": "Search CoCart API documentation quickly, copy URLs, or open them in your browser.",
   "icon": "extension-icon.png",
   "author": "cocart",
-  "categories": ["Documentation", "Developer Tools"],
+  "categories": [
+    "Documentation",
+    "Developer Tools"
+  ],
   "license": "MIT",
   "commands": [
     {
@@ -22,7 +25,7 @@
     "@raycast/eslint-config": "^1.0.11",
     "@types/node": "22.14.0",
     "@types/react": "19.0.10",
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
   },
