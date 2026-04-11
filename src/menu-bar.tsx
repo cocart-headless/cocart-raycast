@@ -1,10 +1,4 @@
-import {
-  MenuBarExtra,
-  Icon,
-  open,
-  showToast,
-  Toast,
-} from "@raycast/api";
+import { MenuBarExtra, Icon, open, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import {
   DocEntry,
