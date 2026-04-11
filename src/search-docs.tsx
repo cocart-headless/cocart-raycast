@@ -213,7 +213,14 @@ export default function SearchDocs() {
                   <Action.OpenInBrowser
                     url={entry.url.replace(/\.md$/, "")}
                     title="Open in Browser"
-                    onOpen={() => addRecentItem({ title: entry.title, url: entry.url.replace(/\.md$/, ""), category: entry.category, source: "docs" })}
+                    onOpen={() =>
+                      addRecentItem({
+                        title: entry.title,
+                        url: entry.url.replace(/\.md$/, ""),
+                        category: entry.category,
+                        source: "docs",
+                      })
+                    }
                   />
                   <Action.CopyToClipboard
                     title="Copy URL"

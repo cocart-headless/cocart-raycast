@@ -71,9 +71,21 @@ export default function BrowseEndpoints() {
       searchBarPlaceholder="Search API endpoints..."
       searchBarAccessory={
         <List.Dropdown tooltip="API Version" onChange={setSelectedVersion}>
-          <List.Dropdown.Item title="v2 (Stable)" value="v2" icon={Icon.CheckCircle} />
-          <List.Dropdown.Item title="v1 (Legacy)" value="v1" icon={Icon.Clock} />
-          <List.Dropdown.Item title="All Versions" value="all" icon={Icon.List} />
+          <List.Dropdown.Item
+            title="v2 (Stable)"
+            value="v2"
+            icon={Icon.CheckCircle}
+          />
+          <List.Dropdown.Item
+            title="v1 (Legacy)"
+            value="v1"
+            icon={Icon.Clock}
+          />
+          <List.Dropdown.Item
+            title="All Versions"
+            value="all"
+            icon={Icon.List}
+          />
         </List.Dropdown>
       }
     >
@@ -95,7 +107,14 @@ export default function BrowseEndpoints() {
                   <Action.OpenInBrowser
                     url={entry.url.replace(/\.md$/, "")}
                     title="Open in Browser"
-                    onOpen={() => addRecentItem({ title: entry.title, url: entry.url.replace(/\.md$/, ""), category: entry.category, source: "endpoints" })}
+                    onOpen={() =>
+                      addRecentItem({
+                        title: entry.title,
+                        url: entry.url.replace(/\.md$/, ""),
+                        category: entry.category,
+                        source: "endpoints",
+                      })
+                    }
                   />
                   <Action.CopyToClipboard
                     title="Copy URL"

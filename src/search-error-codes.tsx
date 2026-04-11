@@ -8,12 +8,7 @@ import {
   Color,
 } from "@raycast/api";
 import { useEffect, useState, useMemo } from "react";
-import {
-  DocEntry,
-  addRecentItem,
-  loadEntries,
-  refreshEntries,
-} from "./shared";
+import { DocEntry, addRecentItem, loadEntries, refreshEntries } from "./shared";
 
 interface ErrorEntry {
   httpCode: string;
@@ -34,7 +29,10 @@ function parseErrorsFromEntry(entry: DocEntry): ErrorEntry[] {
       errors.push({
         httpCode: match[1],
         errorCode: match[2],
-        message: match[3].replace(/<[^>]+>/g, "").replace(/`/g, "").trim(),
+        message: match[3]
+          .replace(/<[^>]+>/g, "")
+          .replace(/`/g, "")
+          .trim(),
         url: entry.url,
       });
     }
@@ -69,9 +67,7 @@ export default function SearchErrorCodes() {
 
   const errorEntries = useMemo(() => {
     const parents = entries.filter(
-      (e) =>
-        e.category === "Error Codes" ||
-        e.url.includes("/error"),
+      (e) => e.category === "Error Codes" || e.url.includes("/error"),
     );
     const allErrors: ErrorEntry[] = [];
     for (const entry of parents) {
@@ -117,17 +113,16 @@ export default function SearchErrorCodes() {
       }
     >
       {grouped.map(([group, items]) => (
-        <List.Section
-          key={group}
-          title={group}
-          subtitle={`${items.length}`}
-        >
+        <List.Section key={group} title={group} subtitle={`${items.length}`}>
           {items.map((err) => (
             <List.Item
               key={`${err.httpCode}-${err.errorCode}`}
               title={err.errorCode}
               subtitle={err.message}
-              icon={{ source: Icon.ExclamationMark, tintColor: httpCodeColor(err.httpCode) }}
+              icon={{
+                source: Icon.ExclamationMark,
+                tintColor: httpCodeColor(err.httpCode),
+              }}
               keywords={[err.httpCode, err.message]}
               detail={
                 <List.Item.Detail
@@ -139,7 +134,14 @@ export default function SearchErrorCodes() {
                   <Action.OpenInBrowser
                     url={err.url.replace(/\.md$/, "")}
                     title="Open in Browser"
-                    onOpen={() => addRecentItem({ title: err.errorCode, url: err.url.replace(/\.md$/, ""), category: `HTTP ${err.httpCode}`, source: "errors" })}
+                    onOpen={() =>
+                      addRecentItem({
+                        title: err.errorCode,
+                        url: err.url.replace(/\.md$/, ""),
+                        category: `HTTP ${err.httpCode}`,
+                        source: "errors",
+                      })
+                    }
                   />
                   <Action.CopyToClipboard
                     title="Copy Error Code"

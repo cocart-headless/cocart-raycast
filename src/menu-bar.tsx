@@ -59,12 +59,20 @@ export default function CoCartMenuBar() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const quickAccess = entries.filter((e) =>
-    ["Getting Started", "Cart", "Products", "Sessions"].includes(e.category) &&
-    e.version !== "v1",
-  ).slice(0, 10);
+  const quickAccess = entries
+    .filter(
+      (e) =>
+        ["Getting Started", "Cart", "Products", "Sessions"].includes(
+          e.category,
+        ) && e.version !== "v1",
+    )
+    .slice(0, 10);
 
-  async function openDoc(entry: { title: string; url: string; category: string }) {
+  async function openDoc(entry: {
+    title: string;
+    url: string;
+    category: string;
+  }) {
     const url = entry.url.replace(/\.md$/, "");
     await addRecentItem({ title: entry.title, url, category: entry.category });
     setRecentItems(await getRecentItems());

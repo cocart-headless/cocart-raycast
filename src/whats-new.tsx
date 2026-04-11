@@ -60,7 +60,11 @@ export default function WhatsNew() {
       searchBarAccessory={
         <List.Dropdown tooltip="Category" onChange={setSelectedCategory}>
           <List.Dropdown.Item title="All" value="all" icon={Icon.List} />
-          <List.Dropdown.Item title="Updates" value="Updates" icon={Icon.Bell} />
+          <List.Dropdown.Item
+            title="Updates"
+            value="Updates"
+            icon={Icon.Bell}
+          />
           <List.Dropdown.Item
             title="Breaking Changes"
             value="Breaking Changes"

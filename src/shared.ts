@@ -37,8 +37,10 @@ export function categorizeFromUrl(url: string): string {
   if (url.includes("/getting-started/jwt/")) return "JWT Setup";
   if (url.includes("/getting-started/")) return "Getting Started";
   if (url.includes("/tutorials/")) return "Tutorials";
-  if (url.includes("/documentation/developers/jwt/actions")) return "JWT Action Hooks";
-  if (url.includes("/documentation/developers/jwt/filters")) return "JWT Filters";
+  if (url.includes("/documentation/developers/jwt/actions"))
+    return "JWT Action Hooks";
+  if (url.includes("/documentation/developers/jwt/filters"))
+    return "JWT Filters";
   if (url.includes("/documentation/developers/jwt/")) return "JWT Developers";
   if (url.includes("/documentation/developers/actions")) return "Action Hooks";
   if (url.includes("/documentation/developers/filters")) return "Filters";
@@ -292,7 +294,9 @@ export async function getRecentItems(): Promise<RecentItem[]> {
   }
 }
 
-export async function addRecentItem(item: Omit<RecentItem, "timestamp">): Promise<void> {
+export async function addRecentItem(
+  item: Omit<RecentItem, "timestamp">,
+): Promise<void> {
   const recent = await getRecentItems();
   const filtered = recent.filter((r) => r.url !== item.url);
   filtered.unshift({ ...item, timestamp: Date.now() });
@@ -318,10 +322,7 @@ export function stripMdx(content: string): string {
     "\n### $1\n",
   );
   result = result.replace(/<Tab\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n**$1**\n");
-  result = result.replace(
-    /<Step\s+[^>]*title="([^"]*)"[^>]*>/gi,
-    "\n**$1**\n",
-  );
+  result = result.replace(/<Step\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n**$1**\n");
 
   result = result.replace(/<\/?[A-Z][A-Za-z]*[^>]*\/?>/g, "");
   result = result.replace(/<\/?aside[^>]*>/gi, "");

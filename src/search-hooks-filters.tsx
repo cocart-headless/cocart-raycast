@@ -62,10 +62,16 @@ function parseHooksFromEntry(entry: DocEntry): HookEntry[] {
         i++;
       }
 
-      const content = contentLines.join("\n").replace(/^\*{3}\s*$/gm, "").trim();
+      const content = contentLines
+        .join("\n")
+        .replace(/^\*{3}\s*$/gm, "")
+        .trim();
       const firstLine = content
         .split("\n")
-        .find((l) => l.trim().length > 0 && !l.startsWith("<") && !l.startsWith("**"));
+        .find(
+          (l) =>
+            l.trim().length > 0 && !l.startsWith("<") && !l.startsWith("**"),
+        );
 
       hooks.push({
         name,
@@ -102,7 +108,9 @@ export default function SearchHooksFilters() {
   }, []);
 
   const hookEntries = useMemo(() => {
-    const parentEntries = entries.filter((e) => HOOK_CATEGORIES.has(e.category));
+    const parentEntries = entries.filter((e) =>
+      HOOK_CATEGORIES.has(e.category),
+    );
     const allHooks: HookEntry[] = [];
     for (const entry of parentEntries) {
       allHooks.push(...parseHooksFromEntry(entry));
@@ -115,7 +123,10 @@ export default function SearchHooksFilters() {
   const grouped = useMemo(() => {
     const groups: Record<string, HookEntry[]> = {};
     for (const hook of hookEntries) {
-      const key = hook.category === hook.section ? hook.category : `${hook.category} — ${hook.section}`;
+      const key =
+        hook.category === hook.section
+          ? hook.category
+          : `${hook.category} — ${hook.section}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(hook);
     }
@@ -131,23 +142,39 @@ export default function SearchHooksFilters() {
         <List.Dropdown tooltip="Category" onChange={setSelectedCategory}>
           <List.Dropdown.Item title="All" value="all" icon={Icon.List} />
           <List.Dropdown.Section title="Core">
-            <List.Dropdown.Item title="Action Hooks" value="Action Hooks" icon={Icon.Bolt} />
-            <List.Dropdown.Item title="Filters" value="Filters" icon={Icon.Filter} />
-            <List.Dropdown.Item title="Functions" value="Functions" icon={Icon.CodeBlock} />
+            <List.Dropdown.Item
+              title="Action Hooks"
+              value="Action Hooks"
+              icon={Icon.Bolt}
+            />
+            <List.Dropdown.Item
+              title="Filters"
+              value="Filters"
+              icon={Icon.Filter}
+            />
+            <List.Dropdown.Item
+              title="Functions"
+              value="Functions"
+              icon={Icon.CodeBlock}
+            />
           </List.Dropdown.Section>
           <List.Dropdown.Section title="JWT Authentication">
-            <List.Dropdown.Item title="Action Hooks" value="JWT Action Hooks" icon={Icon.Bolt} />
-            <List.Dropdown.Item title="Filters" value="JWT Filters" icon={Icon.Filter} />
+            <List.Dropdown.Item
+              title="Action Hooks"
+              value="JWT Action Hooks"
+              icon={Icon.Bolt}
+            />
+            <List.Dropdown.Item
+              title="Filters"
+              value="JWT Filters"
+              icon={Icon.Filter}
+            />
           </List.Dropdown.Section>
         </List.Dropdown>
       }
     >
       {grouped.map(([group, items]) => (
-        <List.Section
-          key={group}
-          title={group}
-          subtitle={`${items.length}`}
-        >
+        <List.Section key={group} title={group} subtitle={`${items.length}`}>
           {items.map((hook) => (
             <List.Item
               key={`${hook.category}-${hook.name}`}
@@ -161,7 +188,14 @@ export default function SearchHooksFilters() {
                   <Action.OpenInBrowser
                     url={hook.url.replace(/\.md$/, "")}
                     title="Open in Browser"
-                    onOpen={() => addRecentItem({ title: hook.name, url: hook.url.replace(/\.md$/, ""), category: hook.category, source: "hooks" })}
+                    onOpen={() =>
+                      addRecentItem({
+                        title: hook.name,
+                        url: hook.url.replace(/\.md$/, ""),
+                        category: hook.category,
+                        source: "hooks",
+                      })
+                    }
                   />
                   <Action.CopyToClipboard
                     title="Copy Code"

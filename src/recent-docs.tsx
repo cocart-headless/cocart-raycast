@@ -52,10 +52,26 @@ export default function RecentDocs() {
       searchBarAccessory={
         <List.Dropdown tooltip="Source" onChange={setSelectedSource}>
           <List.Dropdown.Item title="All" value="all" icon={Icon.List} />
-          <List.Dropdown.Item title="Documentation" value="docs" icon={Icon.Book} />
-          <List.Dropdown.Item title="API Endpoints" value="endpoints" icon={Icon.Code} />
-          <List.Dropdown.Item title="Hooks & Filters" value="hooks" icon={Icon.Bolt} />
-          <List.Dropdown.Item title="Error Codes" value="errors" icon={Icon.ExclamationMark} />
+          <List.Dropdown.Item
+            title="Documentation"
+            value="docs"
+            icon={Icon.Book}
+          />
+          <List.Dropdown.Item
+            title="API Endpoints"
+            value="endpoints"
+            icon={Icon.Code}
+          />
+          <List.Dropdown.Item
+            title="Hooks & Filters"
+            value="hooks"
+            icon={Icon.Bolt}
+          />
+          <List.Dropdown.Item
+            title="Error Codes"
+            value="errors"
+            icon={Icon.ExclamationMark}
+          />
         </List.Dropdown>
       }
     >
@@ -71,7 +87,11 @@ export default function RecentDocs() {
             key={`${item.url}-${index}`}
             title={item.title}
             subtitle={item.category}
-            icon={categoryIcon(item.category) || SOURCE_ICONS[item.source] || Icon.Document}
+            icon={
+              categoryIcon(item.category) ||
+              SOURCE_ICONS[item.source] ||
+              Icon.Document
+            }
             accessories={[
               { tag: SOURCE_LABELS[item.source] || item.source },
               { text: formatTimeAgo(item.timestamp) },
