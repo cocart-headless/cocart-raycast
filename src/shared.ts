@@ -149,7 +149,7 @@ function isContentSparse(content: string): boolean {
     .trim()
     .split("\n")
     .filter((l) => l.trim().length > 0);
-  return lines.length <= 3 || /openapi.*\.yaml\s/i.test(content);
+  return lines.length <= 2 || /openapi.*\.yaml\s/i.test(content);
 }
 
 function parseLlmsFullTxt(text: string): DocEntry[] {
