@@ -63,6 +63,7 @@ export function categorizeFromUrl(url: string): string {
   if (url.includes("/overview/")) return "Overview";
   if (url.includes("/plugins/")) return "Plugins";
   if (url.includes("/resources/")) return "Resources";
+  if (url.includes("/updates/overview")) return "Overview";
   if (url.includes("/updates/")) return "Updates";
   return "Other";
 }
