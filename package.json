@@ -3,7 +3,7 @@
   "name": "cocart-docs",
   "title": "CoCart Docs",
   "description": "Search CoCart API documentation quickly, copy URLs, or open them in your browser.",
-  "icon": "extension-icon.png",
+  "icon": "icon.png",
   "author": "cocart_headless",
   "categories": [
     "Documentation",
