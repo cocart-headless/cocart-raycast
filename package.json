@@ -18,6 +18,10 @@
     "documentation",
     "search"
   ],
+  "platforms": [
+    "macOS",
+    "Windows"
+  ],
   "license": "MIT",
   "commands": [
     {
