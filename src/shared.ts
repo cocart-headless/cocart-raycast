@@ -1,4 +1,6 @@
-import { LocalStorage, Icon } from "@raycast/api";
+import { Cache, Icon } from "@raycast/api";
+
+const cache = new Cache({ capacity: 10 * 1024 * 1024 });
 
 const LLMS_FULL_URL = "https://docs.cocartapi.com/llms-full.txt";
 const LLMS_TXT_URL = "https://docs.cocartapi.com/llms.txt";
@@ -285,8 +287,8 @@ function mergeDescriptions(
   }
 }
 
-async function loadCachedEntries(): Promise<DocEntry[] | null> {
-  const cached = await LocalStorage.getItem<string>(CACHE_KEY);
+function loadCachedEntries(): DocEntry[] | null {
+  const cached = cache.get(CACHE_KEY);
   if (!cached) return null;
 
   try {
@@ -300,9 +302,9 @@ async function loadCachedEntries(): Promise<DocEntry[] | null> {
   return null;
 }
 
-async function cacheEntries(entries: DocEntry[]): Promise<void> {
+function cacheEntries(entries: DocEntry[]): void {
   const data: CachedData = { entries, timestamp: Date.now() };
-  await LocalStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  cache.set(CACHE_KEY, JSON.stringify(data));
 }
 
 async function fetchOpenApiSpecs(
@@ -794,13 +796,16 @@ async function fetchHookMdxSources(): Promise<Map<string, string>> {
   await Promise.all(
     HOOK_MDX_PATHS.map(async (path) => {
       try {
-        const res = await fetch(`${GITHUB_RAW_BASE}${path}.mdx`);
+        const url = `${GITHUB_RAW_BASE}${path}.mdx`;
+        const res = await fetch(url);
+        console.log(`[MDX fetch] ${url} -> ${res.status} ${res.ok ? "OK" : "FAIL"}`);
         if (res.ok) results.set(path, await res.text());
-      } catch {
-        // Non-fatal — fall back to llms-full.txt content
+      } catch (e) {
+        console.log(`[MDX fetch] ${path} -> ERROR: ${e}`);
       }
     }),
   );
+  console.log(`[MDX keys]`, [...results.keys()]);
   return results;
 }
 
@@ -824,8 +829,13 @@ export async function fetchAndParse(): Promise<DocEntry[]> {
 
   // Replace hook entry content with the richer MDX source (which includes path= on ParamField)
   for (const entry of parsed) {
-    const docPath = entry.url.replace("https://docs.cocartapi.com", "");
+    const docPath = entry.url
+      .replace("https://docs.cocartapi.com", "")
+      .replace(/\.md$/, "");
     const mdx = mdxSources.get(docPath);
+    if (["Action Hooks","Filters","Functions","JWT Action Hooks","JWT Filters"].includes(entry.category)) {
+      console.log(`[hook entry] category=${entry.category} docPath=${docPath} mdxMatch=${!!mdx}`);
+    }
     if (mdx) entry.content = mdx;
   }
 
@@ -833,18 +843,18 @@ export async function fetchAndParse(): Promise<DocEntry[]> {
 }
 
 export async function loadEntries(): Promise<DocEntry[]> {
-  const cached = await loadCachedEntries();
+  const cached = loadCachedEntries();
   if (cached) return cached;
 
   const parsed = await fetchAndParse();
-  await cacheEntries(parsed);
+  cacheEntries(parsed);
   return parsed;
 }
 
 export async function refreshEntries(): Promise<DocEntry[]> {
-  await LocalStorage.removeItem(CACHE_KEY);
+  cache.remove(CACHE_KEY);
   const parsed = await fetchAndParse();
-  await cacheEntries(parsed);
+  cacheEntries(parsed);
   return parsed;
 }
 
@@ -861,8 +871,8 @@ export interface RecentItem {
   timestamp: number;
 }
 
-export async function getRecentItems(): Promise<RecentItem[]> {
-  const stored = await LocalStorage.getItem<string>(RECENT_KEY);
+export function getRecentItems(): RecentItem[] {
+  const stored = cache.get(RECENT_KEY);
   if (!stored) return [];
   try {
     return JSON.parse(stored);
@@ -871,16 +881,11 @@ export async function getRecentItems(): Promise<RecentItem[]> {
   }
 }
 
-export async function addRecentItem(
-  item: Omit<RecentItem, "timestamp">,
-): Promise<void> {
-  const recent = await getRecentItems();
+export function addRecentItem(item: Omit<RecentItem, "timestamp">): void {
+  const recent = getRecentItems();
   const filtered = recent.filter((r) => r.url !== item.url);
   filtered.unshift({ ...item, timestamp: Date.now() });
-  await LocalStorage.setItem(
-    RECENT_KEY,
-    JSON.stringify(filtered.slice(0, MAX_RECENT)),
-  );
+  cache.set(RECENT_KEY, JSON.stringify(filtered.slice(0, MAX_RECENT)));
 }
 
 export function extractCode(content: string): string {
@@ -902,15 +907,16 @@ export function stripMdx(content: string): string {
   result = result.replace(/<Step\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n**$1**\n");
 
   // Convert <ParamField> blocks into formatted parameter lines before stripping
+  // Handles path=, query=, body= as the name attribute (in either order with type=)
   result = result.replace(
-    /<ParamField\b[^>]*\bpath="([^"]*)"[^>]*\btype="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
-    (_m, path, type, body) => `\n\`${path}\` **${type}**\n${body.trim()}\n`,
+    /<ParamField\b[^>]*\b(?:path|query|body)="([^"]*)"[^>]*\btype="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
+    (_m, name, type, body) => `\n\`${name}\` **${type}**\n${body.trim()}\n`,
   );
   result = result.replace(
-    /<ParamField\b[^>]*\btype="([^"]*)"[^>]*\bpath="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
-    (_m, type, path, body) => `\n\`${path}\` **${type}**\n${body.trim()}\n`,
+    /<ParamField\b[^>]*\btype="([^"]*)"[^>]*\b(?:path|query|body)="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
+    (_m, type, name, body) => `\n\`${name}\` **${type}**\n${body.trim()}\n`,
   );
-  // ParamField with only type (no path/name) — still format the type
+  // ParamField with only type (no name attribute) — still format the type
   result = result.replace(
     /<ParamField\b[^>]*\btype="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
     (_m, type, body) => `\n**\`${type}\`** — ${body.trim()}\n`,
