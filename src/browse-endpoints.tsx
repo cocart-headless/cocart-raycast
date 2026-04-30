@@ -19,12 +19,18 @@ import {
 
 function methodColor(method?: string): Color {
   switch (method?.toUpperCase()) {
-    case "GET": return Color.Green;
-    case "POST": return Color.Blue;
-    case "PUT": return Color.Orange;
-    case "PATCH": return Color.Yellow;
-    case "DELETE": return Color.Red;
-    default: return Color.SecondaryText;
+    case "GET":
+      return Color.Green;
+    case "POST":
+      return Color.Blue;
+    case "PUT":
+      return Color.Orange;
+    case "PATCH":
+      return Color.Yellow;
+    case "DELETE":
+      return Color.Red;
+    default:
+      return Color.SecondaryText;
   }
 }
 
@@ -114,7 +120,12 @@ export default function BrowseEndpoints() {
               icon={categoryIcon(entry.category)}
               accessories={[
                 entry.method
-                  ? { tag: { value: entry.method, color: methodColor(entry.method) } }
+                  ? {
+                      tag: {
+                        value: entry.method,
+                        color: methodColor(entry.method),
+                      },
+                    }
                   : { tag: entry.version },
               ]}
               detail={<List.Item.Detail markdown={stripMdx(entry.content)} />}

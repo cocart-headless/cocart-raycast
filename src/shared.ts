@@ -150,7 +150,9 @@ function isContentSparse(content: string): boolean {
     .trim()
     .split("\n")
     .filter((l) => l.trim().length > 0);
-  return lines.length <= 2 || /api-reference\/[^\s]+\.(?:yaml|json)\s/i.test(content);
+  return (
+    lines.length <= 2 || /api-reference\/[^\s]+\.(?:yaml|json)\s/i.test(content)
+  );
 }
 
 function parseLlmsFullTxt(text: string): DocEntry[] {
@@ -227,12 +229,19 @@ interface OpenApiField {
 interface OpenApiOperation {
   parameters: Array<OpenApiField & { name: string }>;
   requestBody: Record<string, OpenApiField> | null;
-  response200: { description: string; schemaRef: string | null; fields: Record<string, OpenApiField> } | null;
+  response200: {
+    description: string;
+    schemaRef: string | null;
+    fields: Record<string, OpenApiField>;
+  } | null;
 }
 
 interface ParsedOpenApiSpec {
   paths: Record<string, Record<string, OpenApiOperation>>;
-  schemas: Record<string, { description: string; properties: Record<string, OpenApiField> }>;
+  schemas: Record<
+    string,
+    { description: string; properties: Record<string, OpenApiField> }
+  >;
 }
 
 function mergeDescriptions(
@@ -259,7 +268,12 @@ function mergeDescriptions(
       const spec = openApiSpecs.get(specPath);
       if (spec) {
         entry.method = method.toUpperCase();
-        entry.content = buildEndpointMarkdown(spec, method, path, desc ?? entry.description);
+        entry.content = buildEndpointMarkdown(
+          spec,
+          method,
+          path,
+          desc ?? entry.description,
+        );
         continue;
       }
     }
@@ -291,10 +305,14 @@ async function cacheEntries(entries: DocEntry[]): Promise<void> {
   await LocalStorage.setItem(CACHE_KEY, JSON.stringify(data));
 }
 
-async function fetchOpenApiSpecs(entries: DocEntry[]): Promise<Map<string, ParsedOpenApiSpec>> {
+async function fetchOpenApiSpecs(
+  entries: DocEntry[],
+): Promise<Map<string, ParsedOpenApiSpec>> {
   const specPaths = new Set<string>();
   for (const entry of entries) {
-    const m = entry.content.match(/^(api-reference\/[^\s]+\.(?:yaml|json))\s/im);
+    const m = entry.content.match(
+      /^(api-reference\/[^\s]+\.(?:yaml|json))\s/im,
+    );
     if (m) specPaths.add(m[1]);
   }
 
@@ -305,7 +323,12 @@ async function fetchOpenApiSpecs(entries: DocEntry[]): Promise<Map<string, Parse
         const res = await fetch(`https://docs.cocartapi.com/${specPath}`);
         if (!res.ok) return;
         const text = await res.text();
-        results.set(specPath, specPath.endsWith(".json") ? parseOpenApiJson(text) : parseOpenApiYaml(text));
+        results.set(
+          specPath,
+          specPath.endsWith(".json")
+            ? parseOpenApiJson(text)
+            : parseOpenApiYaml(text),
+        );
       } catch {
         // Non-fatal
       }
@@ -314,12 +337,19 @@ async function fetchOpenApiSpecs(entries: DocEntry[]): Promise<Map<string, Parse
   return results;
 }
 
-function collectYamlBlock(lines: string[], i: number, minIndent: number): [string, number] {
+function collectYamlBlock(
+  lines: string[],
+  i: number,
+  minIndent: number,
+): [string, number] {
   const parts: string[] = [];
   while (i < lines.length) {
     const line = lines[i];
     const trimmed = line.trimStart();
-    if (trimmed === "") { i++; continue; }
+    if (trimmed === "") {
+      i++;
+      continue;
+    }
     if (line.length - trimmed.length < minIndent) break;
     parts.push(trimmed);
     i++;
@@ -337,53 +367,99 @@ function parseOpenApiYaml(text: string): ParsedOpenApiSpec {
 
   while (i < lines.length) {
     if (lines[i].match(/^components:/)) break;
-    const pathMatch = lines[i].match(/^  (\/[^:]+):\s*$/);
-    if (!pathMatch) { i++; continue; }
+    const pathMatch = lines[i].match(/^ {2}(\/[^:]+):\s*$/);
+    if (!pathMatch) {
+      i++;
+      continue;
+    }
 
     const path = pathMatch[1];
     result.paths[path] = {};
     i++;
 
     while (i < lines.length) {
-      if (!lines[i].match(/^    \w/) || lines[i].match(/^components:/)) break;
-      const methodMatch = lines[i].match(/^    (get|post|put|delete|patch):\s*$/i);
-      if (!methodMatch) { i++; continue; }
+      if (!lines[i].match(/^ {4}\w/) || lines[i].match(/^components:/)) break;
+      const methodMatch = lines[i].match(
+        /^ {4}(get|post|put|delete|patch):\s*$/i,
+      );
+      if (!methodMatch) {
+        i++;
+        continue;
+      }
 
       const method = methodMatch[1].toLowerCase();
-      const op: OpenApiOperation = { parameters: [], requestBody: null, response200: null };
+      const op: OpenApiOperation = {
+        parameters: [],
+        requestBody: null,
+        response200: null,
+      };
       result.paths[path][method] = op;
       i++;
 
       while (i < lines.length) {
         const line = lines[i];
-        if (line.match(/^    (get|post|put|delete|patch):/i) || line.match(/^  \//) || line.match(/^components:/)) break;
+        if (
+          line.match(/^ {4}(get|post|put|delete|patch):/i) ||
+          line.match(/^ {2}\//) ||
+          line.match(/^components:/)
+        )
+          break;
 
-        if (line.match(/^      parameters:\s*$/)) {
+        if (line.match(/^ {6}parameters:\s*$/)) {
           i++;
-          while (i < lines.length && lines[i].match(/^        /)) {
-            if (!lines[i].match(/^        - /)) { i++; continue; }
-            const inlineName = lines[i].match(/^        - name:\s*(.+)/);
-            const param = { name: "", type: "string", description: "", required: false, defaultValue: undefined as string | undefined };
-            if (inlineName) { param.name = inlineName[1].trim(); i++; }
-            else i++;
-            while (i < lines.length && lines[i].match(/^          /)) {
-              const pf = lines[i].match(/^          (\w+):\s*(.*)/);
-              if (!pf) { i++; continue; }
+          while (i < lines.length && lines[i].match(/^ {8}/)) {
+            if (!lines[i].match(/^ {8}- /)) {
+              i++;
+              continue;
+            }
+            const inlineName = lines[i].match(/^ {8}- name:\s*(.+)/);
+            const param = {
+              name: "",
+              type: "string",
+              description: "",
+              required: false,
+              defaultValue: undefined as string | undefined,
+            };
+            if (inlineName) {
+              param.name = inlineName[1].trim();
+              i++;
+            } else i++;
+            while (i < lines.length && lines[i].match(/^ {10}/)) {
+              const pf = lines[i].match(/^ {10}(\w+):\s*(.*)/);
+              if (!pf) {
+                i++;
+                continue;
+              }
               const [, key, val] = pf;
-              if (key === "name") { param.name = val.trim(); i++; }
-              else if (key === "required") { param.required = val.trim() === "true"; i++; }
-              else if (key === "description") {
-                if (val.trim() === ">-" || val.trim() === ">" || val.trim() === "|") {
+              if (key === "name") {
+                param.name = val.trim();
+                i++;
+              } else if (key === "required") {
+                param.required = val.trim() === "true";
+                i++;
+              } else if (key === "description") {
+                if (
+                  val.trim() === ">-" ||
+                  val.trim() === ">" ||
+                  val.trim() === "|"
+                ) {
                   const [desc, ni] = collectYamlBlock(lines, i + 1, 12);
-                  param.description = desc; i = ni;
-                } else { param.description = val.trim(); i++; }
+                  param.description = desc;
+                  i = ni;
+                } else {
+                  param.description = val.trim();
+                  i++;
+                }
               } else if (key === "schema") {
                 i++;
-                while (i < lines.length && lines[i].match(/^            /)) {
-                  const sf = lines[i].match(/^            (\w+):\s*(.*)/);
+                while (i < lines.length && lines[i].match(/^ {12}/)) {
+                  const sf = lines[i].match(/^ {12}(\w+):\s*(.*)/);
                   if (sf) {
                     if (sf[1] === "type") param.type = sf[2].trim();
-                    if (sf[1] === "default") param.defaultValue = sf[2].trim().replace(/^['"]|['"]$/g, "");
+                    if (sf[1] === "default")
+                      param.defaultValue = sf[2]
+                        .trim()
+                        .replace(/^['"]|['"]$/g, "");
                   }
                   i++;
                 }
@@ -394,26 +470,39 @@ function parseOpenApiYaml(text: string): ParsedOpenApiSpec {
           continue;
         }
 
-        if (line.match(/^      requestBody:\s*$/)) {
+        if (line.match(/^ {6}requestBody:\s*$/)) {
           i++;
           op.requestBody = {};
           let inProperties = false;
-          while (i < lines.length && lines[i].match(/^        /)) {
-            if (lines[i].match(/^              properties:\s*$/)) { inProperties = true; i++; continue; }
-            if (inProperties && lines[i].match(/^                \w[^:]*:\s*$/)) {
-              const propName = lines[i].trim().replace(/:$/, "");
-              const prop = { type: "string", description: "", defaultValue: undefined as string | undefined };
+          while (i < lines.length && lines[i].match(/^ {8}/)) {
+            if (lines[i].match(/^ {14}properties:\s*$/)) {
+              inProperties = true;
               i++;
-              while (i < lines.length && lines[i].match(/^                  /)) {
-                const pf = lines[i].match(/^                  (\w+):\s*(.*)/);
+              continue;
+            }
+            if (inProperties && lines[i].match(/^ {16}\w[^:]*:\s*$/)) {
+              const propName = lines[i].trim().replace(/:$/, "");
+              const prop = {
+                type: "string",
+                description: "",
+                defaultValue: undefined as string | undefined,
+              };
+              i++;
+              while (i < lines.length && lines[i].match(/^ {18}/)) {
+                const pf = lines[i].match(/^ {18}(\w+):\s*(.*)/);
                 if (pf) {
                   if (pf[1] === "type") prop.type = pf[2].trim();
-                  else if (pf[1] === "default") prop.defaultValue = pf[2].trim().replace(/^['"]|['"]$/g, "");
+                  else if (pf[1] === "default")
+                    prop.defaultValue = pf[2]
+                      .trim()
+                      .replace(/^['"]|['"]$/g, "");
                   else if (pf[1] === "description") {
                     const dv = pf[2].trim();
                     if (dv === ">-" || dv === ">" || dv === "|") {
                       const [desc, ni] = collectYamlBlock(lines, i + 1, 20);
-                      prop.description = desc; i = ni; continue;
+                      prop.description = desc;
+                      i = ni;
+                      continue;
                     }
                     prop.description = dv;
                   }
@@ -426,22 +515,41 @@ function parseOpenApiYaml(text: string): ParsedOpenApiSpec {
           continue;
         }
 
-        if (line.match(/^      responses:\s*$/)) {
+        if (line.match(/^ {6}responses:\s*$/)) {
           i++;
-          while (i < lines.length && lines[i].match(/^        /)) {
-            const statusMatch = lines[i].match(/^        ['"]?(\d+)['"]?:\s*$/);
-            if (!statusMatch) { i++; continue; }
+          while (i < lines.length && lines[i].match(/^ {8}/)) {
+            const statusMatch = lines[i].match(/^ {8}['"]?(\d+)['"]?:\s*$/);
+            if (!statusMatch) {
+              i++;
+              continue;
+            }
             const status = statusMatch[1];
             i++;
-            if (status !== "200") { while (i < lines.length && lines[i].match(/^          /)) i++; continue; }
-            const resp: { description: string; schemaRef: string | null; fields: Record<string, OpenApiField> } =
-              { description: "", schemaRef: null, fields: {} };
-            while (i < lines.length && lines[i].match(/^          /)) {
-              const rf = lines[i].match(/^          description:\s*(.*)/);
-              if (rf) { resp.description = rf[1].trim(); i++; continue; }
+            if (status !== "200") {
+              while (i < lines.length && lines[i].match(/^ {10}/)) i++;
+              continue;
+            }
+            const resp: {
+              description: string;
+              schemaRef: string | null;
+              fields: Record<string, OpenApiField>;
+            } = { description: "", schemaRef: null, fields: {} };
+            while (i < lines.length && lines[i].match(/^ {10}/)) {
+              const rf = lines[i].match(/^ {10}description:\s*(.*)/);
+              if (rf) {
+                resp.description = rf[1].trim();
+                i++;
+                continue;
+              }
               // Capture $ref for schema
-              const refMatch = lines[i].match(/\$ref:\s*['"]?#\/components\/schemas\/(\w+)['"]?/);
-              if (refMatch) { resp.schemaRef = refMatch[1]; i++; continue; }
+              const refMatch = lines[i].match(
+                /\$ref:\s*['"]?#\/components\/schemas\/(\w+)['"]?/,
+              );
+              if (refMatch) {
+                resp.schemaRef = refMatch[1];
+                i++;
+                continue;
+              }
               i++;
             }
             op.response200 = resp;
@@ -455,34 +563,51 @@ function parseOpenApiYaml(text: string): ParsedOpenApiSpec {
   }
 
   // Parse components/schemas
-  while (i < lines.length && !lines[i].match(/^  schemas:\s*$/)) i++;
+  while (i < lines.length && !lines[i].match(/^ {2}schemas:\s*$/)) i++;
   i++;
   while (i < lines.length) {
-    const schemaMatch = lines[i].match(/^    (\w+):\s*$/);
-    if (!schemaMatch) { i++; continue; }
+    const schemaMatch = lines[i].match(/^ {4}(\w+):\s*$/);
+    if (!schemaMatch) {
+      i++;
+      continue;
+    }
     const schemaName = schemaMatch[1];
-    const schema = { description: "", properties: {} as Record<string, OpenApiField> };
+    const schema = {
+      description: "",
+      properties: {} as Record<string, OpenApiField>,
+    };
     result.schemas[schemaName] = schema;
     i++;
     let inProperties = false;
-    while (i < lines.length && lines[i].match(/^      /)) {
-      if (lines[i].match(/^      properties:\s*$/)) { inProperties = true; i++; continue; }
-      if (inProperties && lines[i].match(/^        \w[^:]*:\s*$/)) {
+    while (i < lines.length && lines[i].match(/^ {6}/)) {
+      if (lines[i].match(/^ {6}properties:\s*$/)) {
+        inProperties = true;
+        i++;
+        continue;
+      }
+      if (inProperties && lines[i].match(/^ {8}\w[^:]*:\s*$/)) {
         const propName = lines[i].trim().replace(/:$/, "");
         const field: OpenApiField = { type: "object", description: "" };
         i++;
-        while (i < lines.length && lines[i].match(/^          /)) {
-          const pf = lines[i].match(/^          (\w+):\s*(.*)/);
-          const refMatch = lines[i].match(/\$ref:\s*['"]?#\/components\/schemas\/(\w+)['"]?/);
-          if (refMatch) { field.type = "object"; field.schemaRef = refMatch[1]; i++; }
-          else if (pf) {
+        while (i < lines.length && lines[i].match(/^ {10}/)) {
+          const pf = lines[i].match(/^ {10}(\w+):\s*(.*)/);
+          const refMatch = lines[i].match(
+            /\$ref:\s*['"]?#\/components\/schemas\/(\w+)['"]?/,
+          );
+          if (refMatch) {
+            field.type = "object";
+            field.schemaRef = refMatch[1];
+            i++;
+          } else if (pf) {
             if (pf[1] === "type") field.type = pf[2].trim();
             else if (pf[1] === "description") field.description = pf[2].trim();
             i++;
           } else i++;
         }
         schema.properties[propName] = field;
-      } else { i++; }
+      } else {
+        i++;
+      }
     }
   }
 
@@ -492,47 +617,74 @@ function parseOpenApiYaml(text: string): ParsedOpenApiSpec {
 function parseOpenApiJson(text: string): ParsedOpenApiSpec {
   const raw = JSON.parse(text) as Record<string, unknown>;
   const result: ParsedOpenApiSpec = { paths: {}, schemas: {} };
-  const rawPaths = (raw.paths ?? {}) as Record<string, Record<string, Record<string, unknown>>>;
+  const rawPaths = (raw.paths ?? {}) as Record<
+    string,
+    Record<string, Record<string, unknown>>
+  >;
   for (const [path, methods] of Object.entries(rawPaths)) {
     result.paths[path] = {};
     for (const [method, o] of Object.entries(methods)) {
-      const parsed: OpenApiOperation = { parameters: [], requestBody: null, response200: null };
+      const parsed: OpenApiOperation = {
+        parameters: [],
+        requestBody: null,
+        response200: null,
+      };
 
       for (const p of (o.parameters as Array<Record<string, unknown>>) ?? []) {
         const schema = (p.schema ?? {}) as Record<string, unknown>;
         parsed.parameters.push({
           name: String(p.name ?? ""),
           type: String(schema.type ?? "string"),
-          description: String(p.description ?? "").replace(/\s+/g, " ").trim(),
+          description: String(p.description ?? "")
+            .replace(/\s+/g, " ")
+            .trim(),
           required: p.required === true,
-          defaultValue: schema.default !== undefined ? String(schema.default) : undefined,
+          defaultValue:
+            schema.default !== undefined ? String(schema.default) : undefined,
         });
       }
 
       if (o.requestBody) {
         const rb = o.requestBody as Record<string, unknown>;
         const content = rb.content as Record<string, unknown> | undefined;
-        const schema = (content?.["application/json"] as Record<string, unknown> | undefined)?.schema as Record<string, unknown> | undefined;
-        const props = (schema?.properties ?? {}) as Record<string, Record<string, unknown>>;
+        const schema = (
+          content?.["application/json"] as Record<string, unknown> | undefined
+        )?.schema as Record<string, unknown> | undefined;
+        const props = (schema?.properties ?? {}) as Record<
+          string,
+          Record<string, unknown>
+        >;
         parsed.requestBody = {};
         for (const [name, prop] of Object.entries(props)) {
           parsed.requestBody[name] = {
             type: String(prop.type ?? "string"),
-            description: String(prop.description ?? "").replace(/\s+/g, " ").trim(),
-            defaultValue: prop.default !== undefined ? String(prop.default) : undefined,
+            description: String(prop.description ?? "")
+              .replace(/\s+/g, " ")
+              .trim(),
+            defaultValue:
+              prop.default !== undefined ? String(prop.default) : undefined,
           };
         }
       }
 
-      const responses = (o.responses ?? {}) as Record<string, Record<string, unknown>>;
+      const responses = (o.responses ?? {}) as Record<
+        string,
+        Record<string, unknown>
+      >;
       const resp200 = responses["200"];
       if (resp200) {
         const content = resp200.content as Record<string, unknown> | undefined;
-        const jsonContent = content?.["application/json"] as Record<string, unknown> | undefined;
-        const schemaRef = (jsonContent?.schema as Record<string, unknown> | undefined)?.["$ref"] as string | undefined;
+        const jsonContent = content?.["application/json"] as
+          | Record<string, unknown>
+          | undefined;
+        const schemaRef = (
+          jsonContent?.schema as Record<string, unknown> | undefined
+        )?.["$ref"] as string | undefined;
         const refName = schemaRef?.split("/").pop() ?? null;
         parsed.response200 = {
-          description: String(resp200.description ?? "").replace(/\s+/g, " ").trim(),
+          description: String(resp200.description ?? "")
+            .replace(/\s+/g, " ")
+            .trim(),
           schemaRef: refName,
           fields: {},
         };
@@ -543,20 +695,29 @@ function parseOpenApiJson(text: string): ParsedOpenApiSpec {
   }
 
   // Parse schemas
-  const rawSchemas = ((raw.components as Record<string, unknown> | undefined)?.schemas ?? {}) as Record<string, Record<string, unknown>>;
+  const rawSchemas = ((raw.components as Record<string, unknown> | undefined)
+    ?.schemas ?? {}) as Record<string, Record<string, unknown>>;
   for (const [name, schema] of Object.entries(rawSchemas)) {
-    const props = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+    const props = (schema.properties ?? {}) as Record<
+      string,
+      Record<string, unknown>
+    >;
     result.schemas[name] = {
       description: String(schema.description ?? ""),
       properties: Object.fromEntries(
         Object.entries(props).map(([k, v]) => {
           const ref = (v["$ref"] as string | undefined)?.split("/").pop();
-          return [k, {
-            type: ref ? "object" : String(v.type ?? "object"),
-            description: String(v.description ?? "").replace(/\s+/g, " ").trim(),
-            schemaRef: ref,
-          }];
-        })
+          return [
+            k,
+            {
+              type: ref ? "object" : String(v.type ?? "object"),
+              description: String(v.description ?? "")
+                .replace(/\s+/g, " ")
+                .trim(),
+              schemaRef: ref,
+            },
+          ];
+        }),
       ),
     };
   }
@@ -575,12 +736,15 @@ function buildEndpointMarkdown(
 
   out.push(`## \`${method.toUpperCase()}\` ${path}\n`);
   out.push(`${description}\n`);
-  out.push(`> View the full API specifications in browser for a complete interactive reference.\n`);
+  out.push(
+    `> View the full API specifications in browser for a complete interactive reference.\n`,
+  );
 
   if (op?.parameters && op.parameters.length > 0) {
     out.push("### Parameters\n");
     for (const p of op.parameters) {
-      const badge = p.defaultValue !== undefined ? ` \`default:${p.defaultValue}\`` : "";
+      const badge =
+        p.defaultValue !== undefined ? ` \`default:${p.defaultValue}\`` : "";
       const req = p.required ? " *(required)*" : "";
       out.push(`\`${p.name}\` **${p.type}**${badge}${req}`);
       out.push(p.description ? `\n${p.description}\n` : "\n");
@@ -590,7 +754,8 @@ function buildEndpointMarkdown(
   if (op?.requestBody && Object.keys(op.requestBody).length > 0) {
     out.push("### Body Parameters\n");
     for (const [name, p] of Object.entries(op.requestBody)) {
-      const badge = p.defaultValue !== undefined ? ` \`default:${p.defaultValue}\`` : "";
+      const badge =
+        p.defaultValue !== undefined ? ` \`default:${p.defaultValue}\`` : "";
       out.push(`\`${name}\` **${p.type}**${badge}`);
       out.push(p.description ? `\n${p.description}\n` : "\n");
     }
@@ -602,7 +767,7 @@ function buildEndpointMarkdown(
 
     // Resolve schema properties
     const fields = op.response200.schemaRef
-      ? spec.schemas[op.response200.schemaRef]?.properties ?? {}
+      ? (spec.schemas[op.response200.schemaRef]?.properties ?? {})
       : op.response200.fields;
     const fieldEntries = Object.entries(fields);
     for (let fi = 0; fi < fieldEntries.length; fi++) {
