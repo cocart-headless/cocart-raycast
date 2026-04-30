@@ -73,7 +73,8 @@ function parseHooksFromEntry(entry: DocEntry): HookEntry[] {
           lines[i].match(/^#{2,3} \S+$/) ||
           lines[i].match(/^`cocart[^`]+`\s*$/) ||
           lines[i].match(/^# .+$/)
-        ) break;
+        )
+          break;
         contentLines.push(lines[i]);
         i++;
       }

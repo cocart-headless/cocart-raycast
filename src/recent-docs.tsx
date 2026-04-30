@@ -1,9 +1,4 @@
-import {
-  ActionPanel,
-  Action,
-  List,
-  Icon,
-} from "@raycast/api";
+import { ActionPanel, Action, List, Icon } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { RecentItem, getRecentItems, categoryIcon } from "./shared";
 
