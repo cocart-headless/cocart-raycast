@@ -127,13 +127,9 @@ export default function SearchHooksFilters() {
     const parentEntries = entries.filter((e) =>
       HOOK_CATEGORIES.has(e.category),
     );
-    console.log("[hooks] parentEntries:", parentEntries.map(e => `${e.category} | ${e.url}`));
     const allHooks: HookEntry[] = [];
     for (const entry of parentEntries) {
-      const parsed = parseHooksFromEntry(entry);
-      console.log(`[hooks] ${entry.category} -> ${parsed.length} hooks`);
-      if (parsed.length === 0) console.log(`[hooks content] ${entry.content.slice(0, 800)}`);
-      allHooks.push(...parsed);
+      allHooks.push(...parseHooksFromEntry(entry));
     }
     return allHooks.filter(
       (h) => selectedCategory === "all" || h.category === selectedCategory,

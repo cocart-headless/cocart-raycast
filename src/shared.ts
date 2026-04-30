@@ -798,14 +798,12 @@ async function fetchHookMdxSources(): Promise<Map<string, string>> {
       try {
         const url = `${GITHUB_RAW_BASE}${path}.mdx`;
         const res = await fetch(url);
-        console.log(`[MDX fetch] ${url} -> ${res.status} ${res.ok ? "OK" : "FAIL"}`);
         if (res.ok) results.set(path, await res.text());
-      } catch (e) {
-        console.log(`[MDX fetch] ${path} -> ERROR: ${e}`);
+      } catch {
+        // Non-fatal — fall back to llms-full.txt content
       }
     }),
   );
-  console.log(`[MDX keys]`, [...results.keys()]);
   return results;
 }
 
@@ -833,9 +831,6 @@ export async function fetchAndParse(): Promise<DocEntry[]> {
       .replace("https://docs.cocartapi.com", "")
       .replace(/\.md$/, "");
     const mdx = mdxSources.get(docPath);
-    if (["Action Hooks","Filters","Functions","JWT Action Hooks","JWT Filters"].includes(entry.category)) {
-      console.log(`[hook entry] category=${entry.category} docPath=${docPath} mdxMatch=${!!mdx}`);
-    }
     if (mdx) entry.content = mdx;
   }
 
