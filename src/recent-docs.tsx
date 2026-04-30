@@ -3,8 +3,6 @@ import {
   Action,
   List,
   Icon,
-  showToast,
-  Toast,
 } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { RecentItem, getRecentItems, categoryIcon } from "./shared";
