@@ -324,6 +324,24 @@ export function stripMdx(content: string): string {
   result = result.replace(/<Tab\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n**$1**\n");
   result = result.replace(/<Step\s+[^>]*title="([^"]*)"[^>]*>/gi, "\n**$1**\n");
 
+  // Convert <ParamField> blocks into formatted parameter lines before stripping
+  result = result.replace(
+    /<ParamField\b[^>]*\bpath="([^"]*)"[^>]*\btype="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
+    (_m, path, type, body) => `\n\`${path}\` **${type}**\n${body.trim()}\n`,
+  );
+  result = result.replace(
+    /<ParamField\b[^>]*\btype="([^"]*)"[^>]*\bpath="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
+    (_m, type, path, body) => `\n\`${path}\` **${type}**\n${body.trim()}\n`,
+  );
+  // ParamField with only type (no path/name) — still format the type
+  result = result.replace(
+    /<ParamField\b[^>]*\btype="([^"]*)"[^>]*>([\s\S]*?)<\/ParamField>/gi,
+    (_m, type, body) => `\n**\`${type}\`** — ${body.trim()}\n`,
+  );
+
+  // Upgrade **Parameters** bold heading to a proper ### heading
+  result = result.replace(/^\*\*Parameters\*\*\s*$/gm, "### Parameters");
+
   result = result.replace(/<\/?[A-Z][A-Za-z]*[^>]*\/?>/g, "");
   result = result.replace(/<\/?aside[^>]*>/gi, "");
   result = result.replace(/<br\s*\/?>/g, "\n");
