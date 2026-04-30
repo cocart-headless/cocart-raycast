@@ -2,6 +2,15 @@ import { LocalStorage, Icon } from "@raycast/api";
 
 const LLMS_FULL_URL = "https://docs.cocartapi.com/llms-full.txt";
 const LLMS_TXT_URL = "https://docs.cocartapi.com/llms.txt";
+const GITHUB_RAW_BASE =
+  "https://raw.githubusercontent.com/cocart-headless/cocart-api-documentation/refs/heads/main";
+const HOOK_MDX_PATHS = [
+  "/documentation/developers/actions",
+  "/documentation/developers/filters",
+  "/documentation/developers/functions",
+  "/documentation/developers/jwt/actions",
+  "/documentation/developers/jwt/filters",
+];
 const CACHE_KEY = "cocart-docs-cache";
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
@@ -240,10 +249,26 @@ async function cacheEntries(entries: DocEntry[]): Promise<void> {
   await LocalStorage.setItem(CACHE_KEY, JSON.stringify(data));
 }
 
+async function fetchHookMdxSources(): Promise<Map<string, string>> {
+  const results = new Map<string, string>();
+  await Promise.all(
+    HOOK_MDX_PATHS.map(async (path) => {
+      try {
+        const res = await fetch(`${GITHUB_RAW_BASE}${path}.mdx`);
+        if (res.ok) results.set(path, await res.text());
+      } catch {
+        // Non-fatal — fall back to llms-full.txt content
+      }
+    }),
+  );
+  return results;
+}
+
 export async function fetchAndParse(): Promise<DocEntry[]> {
-  const [fullResponse, indexResponse] = await Promise.all([
+  const [fullResponse, indexResponse, mdxSources] = await Promise.all([
     fetch(LLMS_FULL_URL),
     fetch(LLMS_TXT_URL),
+    fetchHookMdxSources(),
   ]);
   if (!fullResponse.ok)
     throw new Error(`Failed to fetch docs: ${fullResponse.status}`);
@@ -252,6 +277,14 @@ export async function fetchAndParse(): Promise<DocEntry[]> {
   if (indexResponse.ok) {
     mergeDescriptions(parsed, await indexResponse.text());
   }
+
+  // Replace hook entry content with the richer MDX source (which includes path= on ParamField)
+  for (const entry of parsed) {
+    const docPath = entry.url.replace("https://docs.cocartapi.com", "");
+    const mdx = mdxSources.get(docPath);
+    if (mdx) entry.content = mdx;
+  }
+
   return parsed;
 }
 
@@ -339,15 +372,38 @@ export function stripMdx(content: string): string {
     (_m, type, body) => `\n**\`${type}\`** — ${body.trim()}\n`,
   );
 
-  // Upgrade **Parameters** bold heading to a proper ### heading
+  // Upgrade **Parameters** and **Usage** bold headings to proper ### headings
   result = result.replace(/^\*\*Parameters\*\*\s*$/gm, "### Parameters");
+  result = result.replace(/^\*\*Usage\*\*\s*$/gm, "### Usage");
+
+  // Convert inline Note/Info/Warning/Tip tags to blockquotes
+  result = result.replace(
+    /<(Note|Info|Warning|Tip)>([^<]*)<\/\1>/gi,
+    (_m, _tag, body) => `> ${body.trim()}`,
+  );
+  // Multi-line Note/Info/Warning/Tip blocks
+  result = result.replace(
+    /<(Note|Info|Warning|Tip)>([\s\S]*?)<\/\1>/gi,
+    (_m, _tag, body) =>
+      body
+        .trim()
+        .split("\n")
+        .map((l: string) => `> ${l.trim()}`)
+        .join("\n"),
+  );
+
+  // Strip <span> tags but keep their text content
+  result = result.replace(/<span[^>]*>([^<]*)<\/span>/gi, "$1");
+
+  // Strip "Plugin: Label" lines — already visible in the hook name/section context
+  result = result.replace(/^Plugin:\s*.+$/gm, "");
 
   result = result.replace(/<\/?[A-Z][A-Za-z]*[^>]*\/?>/g, "");
   result = result.replace(/<\/?aside[^>]*>/gi, "");
   result = result.replace(/<br\s*\/?>/g, "\n");
 
   result = result.replace(
-    /^[ \t]*(```\w+)(?:\s+[^\n]*)?\n([\s\S]*?)^[ \t]*```$/gm,
+    /^[ \t]*(```\w+)(?:[^\S\n]+[^\n]*)?\n([\s\S]*?)^[ \t]*```$/gm,
     (_, lang, body) => {
       const lines = body.split("\n");
       const indents = lines
